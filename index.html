@@ -213,14 +213,12 @@ img.onload = () => {
   const cssW  = Math.round(img.naturalWidth  * scale);
   const cssH  = Math.round(img.naturalHeight * scale);
  
-  // Canvas físico = CSS × DPR — nítido em telas retina e mobile
   canvas.width        = cssW * dpr;
   canvas.height       = cssH * dpr;
   canvas.style.width  = cssW + 'px';
   canvas.style.height = cssH + 'px';
   ctx.scale(dpr, dpr);
  
-  // draw recebe sempre dimensões CSS
   draw(canvas, ctx, cssW, cssH, '');
   setStatus('Pronto — digite o nome e clique em Gerar.');
 };
@@ -244,23 +242,28 @@ function draw(cvs, c, W, H, nome) {
   c.clearRect(0, 0, W, H);
   c.drawImage(img, 0, 0, W, H);
  
-  // Largura máxima disponível (área direita do certificado: 42.90% → 90.45%)
-  const areaLeft  = AREA_X_LEFT  * W;
-  const areaRight = AREA_X_RIGHT * W;
-  const maxWidth  = (areaRight - areaLeft) * 0.95;
+  if (!nome) return;
+ 
+  // Largura máxima da área útil (em pixels da resolução ORIGINAL)
+  // Área: X 42.90% → 90.45% da imagem original (2000px)
+  const ORIG_W    = img.naturalWidth;  // 2000px
+  const maxWidthOrig = (AREA_X_RIGHT - AREA_X_LEFT) * ORIG_W * 0.92;
+ 
+  // Escala entre canvas atual e original
+  const scale = W / ORIG_W;
+ 
+  // Começa com 100px (na resolução original) e reduz se necessário
+  let fontSizeOrig = 100;
+  c.font = `900 ${fontSizeOrig * scale}px 'Cinzel', serif`;
+ 
+  // Mede na escala do canvas atual mas compara com largura escalada
+  while (c.measureText(nome).width > maxWidthOrig * scale && fontSizeOrig > 18) {
+    fontSizeOrig -= 1;
+    c.font = `900 ${fontSizeOrig * scale}px 'Cinzel', serif`;
+  }
  
   const x = NOME_X_CENTER * W;
   const y = NOME_Y_CENTER * H;
- 
-  // Tamanho base: 100px na resolução original (2000px)
-  let fontSize = Math.round(100 * (W / img.naturalWidth));
- 
-  // Reduz até o nome caber na área útil
-  c.font = `900 ${fontSize}px 'Cinzel', serif`;
-  while (c.measureText(nome).width > maxWidth && fontSize > 18) {
-    fontSize -= 1;
-    c.font = `900 ${fontSize}px 'Cinzel', serif`;
-  }
  
   c.textAlign    = 'center';
   c.textBaseline = 'middle';
