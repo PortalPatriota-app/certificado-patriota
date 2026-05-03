@@ -261,48 +261,14 @@ function draw(cvs, c, W, H, nome) {
   c.fillText(nome, x, y);
 }
  
-// ── Detecção de mobile ───────────────────────────────
-function isMobile() {
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-}
- 
-// ── Compartilhar ou baixar arquivo ───────────────────
-async function shareOrDownload(blob, filename, mimeType) {
-  // No mobile, tenta usar Web Share API com arquivo
-  if (isMobile() && navigator.canShare) {
-    try {
-      const file = new File([blob], filename, { type: mimeType });
-      if (navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: 'Certificado Patriota',
-          text: 'Meu Certificado Patriota'
-        });
-        setStatus('✦ Compartilhado.');
-        return true;
-      }
-    } catch (err) {
-      // Usuário cancelou ou erro — cai para download tradicional
-      if (err.name === 'AbortError') {
-        setStatus('Compartilhamento cancelado.');
-        return true;
-      }
-    }
-  }
-  // Fallback: download tradicional (desktop ou mobile sem suporte)
-  const url = URL.createObjectURL(blob);
-  trigger(url, filename);
-  return false;
-}
- 
 function downloadPNG() {
   const nome = getNome(); if (!nome) return;
   setStatus('⏳ Gerando PNG…');
   const fc = fullCanvas(nome);
   fc.toBlob(async blob => {
-    const filename = `certificado-${slug(nome)}.png`;
-    const shared = await shareOrDownload(blob, filename, 'image/png');
-    if (!shared) setStatus('✦ PNG baixado.');
+    const fname = `certificado-${slug(nome)}.png`;
+    if (await tryShare(blob, fname, 'image/png')) { setStatus('✦ Compartilhado.'); }
+    else { trigger(URL.createObjectURL(blob), fname); setStatus('✦ PNG baixado.'); }
   }, 'image/png');
 }
  
@@ -318,10 +284,9 @@ async function downloadPDF() {
       unit: 'px', format: [W, H], hotfixes: ['px_scaling']
     });
     pdf.addImage(fc.toDataURL('image/jpeg', 0.97), 'JPEG', 0, 0, W, H);
-    const filename = `certificado-${slug(nome)}.pdf`;
-    const blob = pdf.output('blob');
-    const shared = await shareOrDownload(blob, filename, 'application/pdf');
-    if (!shared) setStatus('✦ PDF baixado.');
+    const fname = `certificado-${slug(nome)}.pdf`;
+    if (await tryShare(pdf.output('blob'), fname, 'application/pdf')) { setStatus('✦ Compartilhado.'); }
+    else { pdf.save(fname); setStatus('✦ PDF baixado.'); }
   } catch(e) { setStatus('Erro: ' + e.message); }
 }
  
@@ -343,6 +308,20 @@ function trigger(href, name) {
 }
 function slug(s) { return s.replace(/\s+/g, '-'); }
 function setStatus(m) { document.getElementById('status').textContent = m; }
+ 
+async function tryShare(blob, filename, mimeType) {
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  if (!isMobile || !navigator.canShare) return false;
+  try {
+    const file = new File([blob], filename, { type: mimeType });
+    if (!navigator.canShare({ files: [file] })) return false;
+    await navigator.share({ files: [file], title: 'Certificado Patriota' });
+    return true;
+  } catch (err) {
+    if (err.name === 'AbortError') return true;
+    return false;
+  }
+}
  
 document.getElementById('nomeInput').addEventListener('keydown', e => {
   if (e.key === 'Enter') gerarCertificado();
