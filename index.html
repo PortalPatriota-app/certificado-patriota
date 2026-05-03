@@ -261,13 +261,27 @@ function draw(cvs, c, W, H, nome) {
   c.fillText(nome, x, y);
 }
 
+const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+
 function downloadPNG() {
   const nome = getNome(); if (!nome) return;
   setStatus('⏳ Gerando PNG…');
   const fc = fullCanvas(nome);
-  fc.toBlob(blob => {
-    trigger(URL.createObjectURL(blob), `certificado-${slug(nome)}.png`);
-    setStatus('✦ PNG baixado.');
+  fc.toBlob(async blob => {
+    const filename = `certificado-${slug(nome)}.png`;
+    const file = new File([blob], filename, { type: 'image/png' });
+    if (isMobile && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ title: 'Certificado Patriota', files: [file] });
+        setStatus('✦ Compartilhado!');
+      } catch(e) {
+        if (e.name !== 'AbortError') { trigger(URL.createObjectURL(blob), filename); setStatus('✦ PNG baixado.'); }
+        else setStatus('Compartilhamento cancelado.');
+      }
+    } else {
+      trigger(URL.createObjectURL(blob), filename);
+      setStatus('✦ PNG baixado.');
+    }
   }, 'image/png');
 }
 
@@ -283,7 +297,21 @@ async function downloadPDF() {
       unit: 'px', format: [W, H], hotfixes: ['px_scaling']
     });
     pdf.addImage(fc.toDataURL('image/jpeg', 0.97), 'JPEG', 0, 0, W, H);
-    pdf.save(`certificado-${slug(nome)}.pdf`);
+    const filename = `certificado-${slug(nome)}.pdf`;
+    if (isMobile && navigator.canShare) {
+      try {
+        const pdfBlob = pdf.output('blob');
+        const file = new File([pdfBlob], filename, { type: 'application/pdf' });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({ title: 'Certificado Patriota', files: [file] });
+          setStatus('✦ Compartilhado!');
+          return;
+        }
+      } catch(e) {
+        if (e.name === 'AbortError') { setStatus('Compartilhamento cancelado.'); return; }
+      }
+    }
+    pdf.save(filename);
     setStatus('✦ PDF baixado.');
   } catch(e) { setStatus('Erro: ' + e.message); }
 }
