@@ -283,7 +283,8 @@ async function downloadPDF() {
       unit: 'px', format: [W, H], hotfixes: ['px_scaling']
     });
     pdf.addImage(fc.toDataURL('image/jpeg', 0.97), 'JPEG', 0, 0, W, H);
-    pdf.save(`certificado-${slug(nome)}.pdf`);
+    const _blob = pdf.output('blob');
+    trigger(URL.createObjectURL(_blob), `certificado-${slug(nome)}.pdf`);
     setStatus('✦ PDF baixado.');
   } catch(e) { setStatus('Erro: ' + e.message); }
 }
@@ -300,6 +301,20 @@ function fullCanvas(nome) {
   return fc;
 }
 function trigger(href, name) {
+  // Mobile: tenta share nativo antes de baixar
+  const isMob = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  if (isMob && navigator.canShare) {
+    fetch(href).then(r => r.blob()).then(blob => {
+      const file = new File([blob], name, { type: blob.type });
+      if (navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file], title: 'Certificado Patriota' })
+          .catch(() => { const a = document.createElement('a'); a.href = href; a.download = name; a.click(); URL.revokeObjectURL(href); });
+        return;
+      }
+      const a = document.createElement('a'); a.href = href; a.download = name; a.click(); URL.revokeObjectURL(href);
+    });
+    return;
+  }
   const a = document.createElement('a');
   a.href = href; a.download = name; a.click();
   URL.revokeObjectURL(href);
@@ -350,76 +365,6 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 // ─────────────────────────────────────────────────────
-</script>
- 
-<script>
-// Share nativo no mobile — intercepta os botões sem alterar o script principal
-(function() {
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  if (!isMobile || !navigator.canShare) return;
- 
-  function getNomeShare() {
-    const n = document.getElementById('nomeInput').value.trim().toUpperCase();
-    return n;
-  }
-  function slugShare(s) { return s.replace(/\s+/g, '-'); }
-  function setStatusShare(m) { document.getElementById('status').textContent = m; }
- 
-  function buildFullCanvas(nome) {
-    const fc = document.createElement('canvas');
-    fc.width = img.naturalWidth;
-    fc.height = img.naturalHeight;
-    draw(fc, fc.getContext('2d'), fc.width, fc.height, nome);
-    return fc;
-  }
- 
-  async function shareFile(blob, filename, mimeType) {
-    try {
-      const file = new File([blob], filename, { type: mimeType });
-      if (!navigator.canShare({ files: [file] })) return false;
-      await navigator.share({ files: [file], title: 'Certificado Patriota' });
-      return true;
-    } catch (err) {
-      if (err.name === 'AbortError') return true;
-      return false;
-    }
-  }
- 
-  // Substitui handler do PNG
-  document.getElementById('btnPng').onclick = function() {
-    const nome = getNomeShare();
-    if (!nome) { setStatusShare('⚠ Digite um nome primeiro.'); return; }
-    setStatusShare('⏳ Preparando…');
-    const fc = buildFullCanvas(nome);
-    fc.toBlob(async blob => {
-      const fname = `certificado-${slugShare(nome)}.png`;
-      const ok = await shareFile(blob, fname, 'image/png');
-      if (ok) setStatusShare('✦ Compartilhado.');
-      else { downloadPNG(); }
-    }, 'image/png');
-  };
- 
-  // Substitui handler do PDF
-  document.getElementById('btnPdf').onclick = async function() {
-    const nome = getNomeShare();
-    if (!nome) { setStatusShare('⚠ Digite um nome primeiro.'); return; }
-    setStatusShare('⏳ Preparando…');
-    try {
-      const { jsPDF } = window.jspdf;
-      const fc = buildFullCanvas(nome);
-      const W = img.naturalWidth, H = img.naturalHeight;
-      const pdf = new jsPDF({
-        orientation: W >= H ? 'landscape' : 'portrait',
-        unit: 'px', format: [W, H], hotfixes: ['px_scaling']
-      });
-      pdf.addImage(fc.toDataURL('image/jpeg', 0.97), 'JPEG', 0, 0, W, H);
-      const fname = `certificado-${slugShare(nome)}.pdf`;
-      const ok = await shareFile(pdf.output('blob'), fname, 'application/pdf');
-      if (ok) setStatusShare('✦ Compartilhado.');
-      else { downloadPDF(); }
-    } catch(e) { setStatusShare('Erro: ' + e.message); }
-  };
-})();
 </script>
 </body>
 </html>
