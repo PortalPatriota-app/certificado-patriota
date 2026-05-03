@@ -208,18 +208,10 @@ let imgLoaded = false;
 img.crossOrigin = 'anonymous';
 img.onload = () => {
   imgLoaded = true;
-  const scale = MAX_W / img.naturalWidth;
-  const dpr   = window.devicePixelRatio || 1;
-  const cssW  = Math.round(img.naturalWidth  * scale);
-  const cssH  = Math.round(img.naturalHeight * scale);
- 
-  canvas.width        = cssW * dpr;
-  canvas.height       = cssH * dpr;
-  canvas.style.width  = cssW + 'px';
-  canvas.style.height = cssH + 'px';
-  ctx.scale(dpr, dpr);
- 
-  ctx.drawImage(img, 0, 0, cssW, cssH);
+  const scale   = MAX_W / img.naturalWidth;
+  canvas.width  = Math.round(img.naturalWidth  * scale);
+  canvas.height = Math.round(img.naturalHeight * scale);
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
   setStatus('Pronto — digite o nome e clique em Gerar.');
 };
 img.onerror = () => setStatus('Erro ao carregar o certificado.');
@@ -229,10 +221,7 @@ function gerarCertificado() {
   const nome = document.getElementById('nomeInput').value.trim().toUpperCase();
   if (!nome) { setStatus('⚠ Digite um nome primeiro.'); return; }
   if (!imgLoaded) { setStatus('⚠ Aguarde a imagem carregar.'); return; }
-  const dpr  = window.devicePixelRatio || 1;
-  const cssW = canvas.width  / dpr;
-  const cssH = canvas.height / dpr;
-  draw(canvas, ctx, cssW, cssH, nome);
+  draw(canvas, ctx, canvas.width, canvas.height, nome);
   document.getElementById('btnPng').disabled = false;
   document.getElementById('btnPdf').disabled = false;
   setStatus('✦ Certificado gerado.');
