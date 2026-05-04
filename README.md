@@ -1,2 +1,0 @@
-# certificado-patriota
-certificado patriota.
