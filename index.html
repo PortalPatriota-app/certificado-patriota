@@ -213,6 +213,22 @@ img.onload = () => {
   canvas.height = Math.round(img.naturalHeight * scale);
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
   setStatus('Pronto — digite o nome e clique em Gerar.');
+ 
+  // === DEBUG TEMPORÁRIO ===
+  const dbg = document.createElement('div');
+  dbg.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#ff0;color:#000;font:bold 11px monospace;padding:6px;z-index:9999;text-align:left;line-height:1.4;';
+  dbg.innerHTML = `
+    innerWidth: ${window.innerWidth}<br>
+    devicePixelRatio: ${window.devicePixelRatio}<br>
+    MAX_W: ${MAX_W}<br>
+    img natural: ${img.naturalWidth}×${img.naturalHeight}<br>
+    canvas: ${canvas.width}×${canvas.height}<br>
+    canvas client: ${canvas.clientWidth}×${canvas.clientHeight}<br>
+    UA: ${navigator.userAgent.substring(0,60)}...<br>
+    canShare: ${!!navigator.canShare}
+  `;
+  document.body.appendChild(dbg);
+  // === FIM DEBUG ===
 };
 img.onerror = () => setStatus('Erro ao carregar o certificado.');
 img.src = CERT_URL;
